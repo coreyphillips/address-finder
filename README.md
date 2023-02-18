@@ -1,7 +1,7 @@
 # address-finder
 
 ### Description
-Used to search for a set of provided addresses by iterating over many possible address derivation paths.
+Used to search for a set of provided addresses by iterating over many possible standard and non-standard address derivation paths.
 
 ## Getting started
 

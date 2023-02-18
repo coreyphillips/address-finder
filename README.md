@@ -10,16 +10,16 @@ git clone https://github.com/coreyphillips/address-finder
 cd address-finder
 yarn install
 ````
-Once installed, open index.js and:
- - Replace the MNEMONIC variable with the mnemonic you would like to test.
- - Replace the addresses in the ADDRESSES_TO_SEARCH_FOR variable with the addresses you would like the program to search for.
+Once installed, open `index.js` and:
+ - Replace the `MNEMONIC` variable with the mnemonic you would like to test.
+ - Replace the addresses in the `ADDRESSES_TO_SEARCH_FOR` variable with the addresses you would like the program to search for.
 
 Then run:
 ```bash
 node .
 ````
 
-If matches are found you will be greeted with something resembling following response:
+If matches are found you will be greeted with something resembling the following response:
 ```
 Mnemonic:
 pyramid sport hunt mushroom hope jewel mountain sniff damage lunch mule inch

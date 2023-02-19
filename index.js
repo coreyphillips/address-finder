@@ -5,6 +5,7 @@ import {BIP32Factory} from "bip32";
 
 const bip32 = BIP32Factory(ecc);
 const networks = bitcoin.networks;
+const network = networks['bitcoin'];
 
 const MNEMONIC = 'pyramid sport hunt mushroom hope jewel mountain sniff damage lunch mule inch';
 const ADDRESSES_TO_SEARCH_FOR = ['1K6UnW7vaVk2gGS8BQ3HKqkLMtv7NtkYKL', 'bc1qrjz3acmxqkhz25zmwu2auht44ghezvkj5rp2m4', 'bc1qkme746j507l2c650f96yy69yy4jnnu55d44rt6'];
@@ -75,8 +76,7 @@ const runTest = () => {
     }
 };
 
-const getAddress = ({path, type, cointype}) => {
-    const network = cointype === '0' ? networks['bitcoin'] : networks['testnet'];
+const getAddress = ({path, type}) => {
     const seed = bip39.mnemonicToSeedSync(MNEMONIC, '');
     const root = bip32.fromSeed(seed, network);
     const keyPair = root.derivePath(path);

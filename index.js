@@ -2,6 +2,8 @@ import * as ecc from 'tiny-secp256k1';
 import * as bip39 from "bip39";
 import * as bitcoin from "bitcoinjs-lib";
 import {BIP32Factory} from "bip32";
+import { ECPairFactory } from 'ecpair';
+const ECPair = ECPairFactory(ecc);
 
 const bip32 = BIP32Factory(ecc);
 const networks = bitcoin.networks;
@@ -11,6 +13,7 @@ const MNEMONIC = 'pyramid sport hunt mushroom hope jewel mountain sniff damage l
 const ADDRESSES_TO_SEARCH_FOR = ['1K6UnW7vaVk2gGS8BQ3HKqkLMtv7NtkYKL', 'bc1qrjz3acmxqkhz25zmwu2auht44ghezvkj5rp2m4', 'bc1qkme746j507l2c650f96yy69yy4jnnu55d44rt6'];
 const MAX_INDEX_COUNT = 50; // Max number of addresses to generate per path.
 const VERBOSE = false; // If set to true, will log every generated address.
+const CHECK_FOR_BIT_FLIPS = true; // If set to true, will check for bit flips in the generated private keys and addresses.
 
 const pathObject = {
   purpose: '0',
@@ -54,12 +57,35 @@ const runTest = () => {
                         pObj.change = _change;
                         pObj.index = i;
                         const path = pathObjToStr(pObj);
-                        const res = getAddress({ path, type: _addressType, cointype: _coinType });
-                        const addrData = {...res, type: _addressType};
+                        const seed = bip39.mnemonicToSeedSync(MNEMONIC, '');
+                        const root = bip32.fromSeed(seed, network);
+                        const keyPair = root.derivePath(path);
+                        const res = getAddress({ keyPair, type: _addressType });
+                        const addrData = {...res, path, type: _addressType};
                         if (ADDRESSES_TO_SEARCH_FOR.includes(res.address)) {
                             addressesFound.push(addrData);
                             found = true;
                         }
+
+                        if (CHECK_FOR_BIT_FLIPS) {
+                            const binaryPrivateKey = textToBinary(res.privateKey, _addressType);
+                            const binaryAddress = textToBinary(res.address, _addressType);
+                            for (let i = 0; i < binaryPrivateKey.length; i++) {
+                                const foundAddresses = flipBitAndCheckAddresses(binaryPrivateKey, i, true);
+                                if (foundAddresses.length) {
+                                    addressesFound.push(...foundAddresses);
+                                    found = true;
+                                }
+                            }
+                            for (let i = 0; i < binaryAddress.length; i++) {
+                                const foundAddresses = flipBitAndCheckAddresses(binaryAddress, i, false);
+                                if (foundAddresses.length) {
+                                    addressesFound.push(...foundAddresses);
+                                    found = true;
+                                }
+                            }
+                        }
+
                         if (VERBOSE) console.log(addrData);
                         i++
                     }
@@ -76,10 +102,7 @@ const runTest = () => {
     }
 };
 
-const getAddress = ({path, type}) => {
-    const seed = bip39.mnemonicToSeedSync(MNEMONIC, '');
-    const root = bip32.fromSeed(seed, network);
-    const keyPair = root.derivePath(path);
+const getAddress = ({keyPair, type}) => {
     let address = '';
     switch (type) {
         case 'p2wpkh':
@@ -103,11 +126,55 @@ const getAddress = ({path, type}) => {
     }
     return {
         address,
-        path,
         publicKey: keyPair.publicKey.toString('hex'),
         privateKey: keyPair.toWIF(),
     }
 }
+
+const flipBitAndCheckAddresses = (binary, position, isPrivateKey) => {
+    const addressesFound = [];
+    let flippedBinary = binary.split('');
+    // Flip the bit at the specified position
+    flippedBinary[position] = flippedBinary[position] === '0' ? '1' : '0';
+    flippedBinary = flippedBinary.join('');
+
+    const txt = binaryToText(flippedBinary);
+    if (isPrivateKey) {
+        addressTypes.map((_addressType) => {
+            const address = getAddressFromPrivateKey(txt, _addressType);
+            if (address && ADDRESSES_TO_SEARCH_FOR.includes(address)) {
+                addressesFound.push({address, privateKey: txt, type: _addressType, binary: flippedBinary});
+            }
+        });
+    } else {
+        if (ADDRESSES_TO_SEARCH_FOR.includes(txt)) {
+            addressesFound.push({ address: txt, privateKey: 'unknown', binary: flippedBinary });
+        }
+    }
+    return addressesFound;
+}
+
+const getAddressFromPrivateKey = (privateKey, type) => {
+    try {
+        const keyPair = ECPair.fromWIF(privateKey, network);
+        return getAddress({keyPair, type});
+    } catch {
+        return '';
+    }
+}
+
+const textToBinary = (text) => {
+    return text.split('').map(function(char) {
+        return char.charCodeAt(0).toString(2).padStart(8, '0');
+    }).join(' ');
+}
+
+const binaryToText = (binary) => {
+    return binary.split(' ').map(function(bin) {
+        return String.fromCharCode(parseInt(bin, 2));
+    }).join('');
+}
+
 
 runTest();
 
